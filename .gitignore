@@ -1,0 +1,29 @@
+# Build
+bin/
+obj/
+out/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+*.nupkg
+
+# Env
+.env
+.env.local
+appsettings.*.local.json
+
+# Storage local
+storage/
+uploads/
+data/arquivos/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db

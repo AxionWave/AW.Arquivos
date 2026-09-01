@@ -1,0 +1,14 @@
+.git
+.gitignore
+.vs
+.idea
+.vscode
+bin
+obj
+storage
+uploads
+data
+*.user
+.env
+.env.local
+README.md

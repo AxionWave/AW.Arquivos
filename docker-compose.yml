@@ -1,0 +1,37 @@
+services:
+  arquivos:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: arquivos
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - Jwt__Secret=${JWT_SECRET}
+      - JWT_SECRET=${JWT_SECRET}
+      - Jwt__Issuer=${JWT_ISSUER}
+      - Jwt__Audience=${JWT_AUDIENCE}
+      - GATEWAY_INTERNAL_TOKEN=${GATEWAY_INTERNAL_TOKEN}
+      - Gateway__InternalServiceToken=${GATEWAY_INTERNAL_TOKEN}
+      - ConnectionStrings__Default=Host=postgres;Port=5432;Database=${POSTGRES_DB:-base};Username=${DB_USERNAME:-postgres};Password=${DB_PASSWORD};Search Path=arquivos
+      - Storage__RootPath=/var/arquivos
+      - Storage__MaxFileBytes=${ARQUIVOS_MAX_FILE_BYTES:-52428800}
+    volumes:
+      - arquivos_data:/var/arquivos
+    restart: on-failure:5
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - enterprisex-net
+
+volumes:
+  arquivos_data:
+
+networks:
+  enterprisex-net:
+    external: true
+    name: enterprisex-net
