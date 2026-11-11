@@ -34,6 +34,9 @@ public sealed class Arquivo
     public string? IpOrigem { get; set; }
     public string? UserAgent { get; set; }
 
+    /// <summary>Imagem servida sem login em /api/arquivos/publico/{token} (logos, por exemplo).</summary>
+    public bool Publico { get; set; }
+
     public bool Ativo { get; set; } = true;
     public DateTimeOffset DataCriacao { get; set; }
     public DateTimeOffset DataAtualizacao { get; set; }

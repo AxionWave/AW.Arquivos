@@ -11,6 +11,8 @@ public sealed class UploadArquivoForm
     public string? ReferenciaExterna { get; set; }
     public string? Metadados { get; set; }
     public int? EmpresaId { get; set; }
+    /// <summary>Só imagens (PNG, JPEG, WebP, GIF) de até 2 MB.</summary>
+    public bool Publico { get; set; }
 }
 
 public sealed class AtualizarArquivoForm

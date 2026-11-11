@@ -63,6 +63,9 @@ public sealed class ArquivoService(
             throw new ArquivoValidationException($"Arquivo excede o limite de {max} bytes.");
         }
 
+        if (request.Publico)
+            await ConferirImagemPublicaAsync(blob, contentType, ct);
+
         var now = DateTimeOffset.UtcNow;
         var entity = new Arquivo
         {
@@ -85,6 +88,7 @@ public sealed class ArquivoService(
             Metadados = request.Metadados ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
             IpOrigem = NormalizeOptional(request.IpOrigem, 64),
             UserAgent = NormalizeOptional(request.UserAgent, 512),
+            Publico = request.Publico,
             Ativo = true,
             DataCriacao = now,
             DataAtualizacao = now
@@ -126,6 +130,25 @@ public sealed class ArquivoService(
         };
     }
 
+    public async Task<DownloadArquivoResult> DownloadPublicoAsync(string token, CancellationToken ct)
+    {
+        if (!ArquivoToken.IsValidFormat(token))
+            throw new ArquivoNotFoundException();
+        var arquivo = await repository.GetByTokenAsync(token, ct);
+        if (arquivo is not { Publico: true, Ativo: true })
+            throw new ArquivoNotFoundException();
+
+        var stream = await storage.OpenReadAsync(arquivo.CaminhoStorage, ct);
+        return new DownloadArquivoResult
+        {
+            Conteudo = stream,
+            NomeOriginal = arquivo.NomeOriginal,
+            ContentType = arquivo.ContentType,
+            TamanhoBytes = arquivo.TamanhoBytes,
+            ChecksumSha256 = arquivo.ChecksumSha256
+        };
+    }
+
     public async Task<ArquivoResponse> UpdateAsync(string token, AtualizarArquivoRequest request, CancellationToken ct)
     {
         var arquivo = await LoadOwnedAsync(token, ct);
@@ -164,6 +187,9 @@ public sealed class ArquivoService(
                 await TryDeleteAsync(blob.RelativePath, ct);
                 throw new ArquivoValidationException($"Arquivo excede o limite de {max} bytes.");
             }
+
+            if (arquivo.Publico)
+                await ConferirImagemPublicaAsync(blob, NormalizeContentType(request.ContentType ?? arquivo.ContentType), ct);
 
             oldPath = arquivo.CaminhoStorage;
             arquivo.NomeArmazenado = blob.StoredFileName;
@@ -319,6 +345,39 @@ public sealed class ArquivoService(
         throw new InvalidOperationException("Não foi possível gerar um token único.");
     }
 
+    public const long MaxBytesPublico = 2 * 1024 * 1024;
+
+    /// <summary>Assinatura dos primeiros bytes de cada tipo aceito como público. SVG fica de fora (pode ter script).</summary>
+    private static readonly Dictionary<string, Func<byte[], bool>> ImagensPublicas = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["image/png"] = b => b.Length >= 8 && b[0] == 0x89 && b[1] == 0x50 && b[2] == 0x4E && b[3] == 0x47,
+        ["image/jpeg"] = b => b.Length >= 3 && b[0] == 0xFF && b[1] == 0xD8 && b[2] == 0xFF,
+        ["image/gif"] = b => b.Length >= 6 && b[0] == 0x47 && b[1] == 0x49 && b[2] == 0x46 && b[3] == 0x38,
+        ["image/webp"] = b => b.Length >= 12 && b[0] == 0x52 && b[1] == 0x49 && b[2] == 0x46 && b[3] == 0x46
+                              && b[8] == 0x57 && b[9] == 0x45 && b[10] == 0x42 && b[11] == 0x50,
+    };
+
+    private async Task ConferirImagemPublicaAsync(StoredBlob blob, string contentType, CancellationToken ct)
+    {
+        string? erro = null;
+        if (!ImagensPublicas.TryGetValue(contentType, out var assinatura))
+            erro = "Arquivo público precisa ser uma imagem PNG, JPEG, WebP ou GIF.";
+        else if (blob.SizeBytes > MaxBytesPublico)
+            erro = "Imagem pública pode ter no máximo 2 MB.";
+        else
+        {
+            var inicio = new byte[12];
+            await using var s = await storage.OpenReadAsync(blob.RelativePath, ct);
+            var lidos = await s.ReadAtLeastAsync(inicio, inicio.Length, throwOnEndOfStream: false, ct);
+            if (!assinatura(inicio[..lidos]))
+                erro = "O conteúdo do arquivo não corresponde ao tipo de imagem informado.";
+        }
+
+        if (erro is null) return;
+        await TryDeleteAsync(blob.RelativePath, ct);
+        throw new ArquivoValidationException(erro);
+    }
+
     private async Task TryDeleteAsync(string path, CancellationToken ct)
     {
         try { await storage.DeleteAsync(path, ct); }
@@ -363,6 +422,8 @@ public sealed class ArquivoService(
         ReferenciaExterna = a.ReferenciaExterna,
         Descricao = a.Descricao,
         Metadados = a.Metadados,
+        Publico = a.Publico,
+        UrlPublica = a.Publico ? $"/api/arquivos/publico/{a.Token}" : null,
         Ativo = a.Ativo,
         DataCriacao = a.DataCriacao,
         DataAtualizacao = a.DataAtualizacao,

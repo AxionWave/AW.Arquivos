@@ -58,6 +58,7 @@ public sealed class ArquivosController(IArquivoService arquivos, ICurrentUserAcc
             ReferenciaExterna = form.ReferenciaExterna,
             Metadados = ParseMetadados(form.Metadados),
             EmpresaIdOverride = form.EmpresaId,
+            Publico = form.Publico,
             IpOrigem = HttpContext.Connection.RemoteIpAddress?.ToString(),
             UserAgent = Request.Headers.UserAgent.ToString()
         }, ct);

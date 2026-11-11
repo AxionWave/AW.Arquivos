@@ -12,6 +12,7 @@ public sealed class UploadArquivoRequest
     public string? ReferenciaExterna { get; init; }
     public Dictionary<string, string>? Metadados { get; init; }
     public int? EmpresaIdOverride { get; init; }
+    public bool Publico { get; init; }
     public string? IpOrigem { get; init; }
     public string? UserAgent { get; init; }
 }
@@ -43,6 +44,9 @@ public sealed class ArquivoResponse
     public string? ReferenciaExterna { get; init; }
     public string? Descricao { get; init; }
     public Dictionary<string, string> Metadados { get; init; } = new();
+    public required bool Publico { get; init; }
+    /// <summary>Caminho relativo ao Gateway para baixar sem login; só em arquivos públicos.</summary>
+    public string? UrlPublica { get; init; }
     public required bool Ativo { get; init; }
     public required DateTimeOffset DataCriacao { get; init; }
     public required DateTimeOffset DataAtualizacao { get; init; }
@@ -63,4 +67,5 @@ public sealed class DownloadArquivoResult
     public required string NomeOriginal { get; init; }
     public required string ContentType { get; init; }
     public required long TamanhoBytes { get; init; }
+    public string? ChecksumSha256 { get; init; }
 }

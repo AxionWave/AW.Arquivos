@@ -40,6 +40,7 @@ public sealed class ArquivosDbContext(DbContextOptions<ArquivosDbContext> option
             e.Property(x => x.Descricao).HasMaxLength(500);
             e.Property(x => x.IpOrigem).HasMaxLength(64);
             e.Property(x => x.UserAgent).HasMaxLength(512);
+            e.Property(x => x.Publico).HasDefaultValue(false);
             e.Property(x => x.Metadados)
                 .HasColumnType("jsonb")
                 .HasConversion(metadadosConverter)
